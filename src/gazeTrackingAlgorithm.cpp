@@ -5,6 +5,9 @@ gazeTrackingAlgorithm::gazeTrackingAlgorithm(){
     // subscribe to a topic which publishes filtered gazetool data
     gazeSub = n.subscribe("gazeHyps_filtered", 1, &gazeTrackingAlgorithm::gazeCallback, this);
     
+    //subscribe to additional gazetool information
+    gazeInfoSub = n.subscribe("additionalGazetoolInformation", 1, &gazeTrackingAlgorithm::additionalGazetoolInformationCallback, this);
+    
     // subscribe to joint states
     jointStatesSub = n.subscribe("/lwa4p_blue/joint_states", 1, &gazeTrackingAlgorithm::jointStatesCallback, this);
     
@@ -19,6 +22,14 @@ gazeTrackingAlgorithm::gazeTrackingAlgorithm(){
 
 gazeTrackingAlgorithm::~gazeTrackingAlgorithm(){
     
+}
+
+void gazeTrackingAlgorithm::additionalGazetoolInformationCallback(const gazetool::GazeInfo& msg){
+    horGazeTolerance = msg.horizontalGazeTolerance;
+    verGazeTolerance = msg.verticalGazeTolerance;
+    
+    std::cout << horGazeTolerance << std::endl;
+    std::cout << verGazeTolerance << std::endl;
 }
 
 void gazeTrackingAlgorithm::gazeCallback(const gazetool::GazeHyps& msg){
@@ -136,7 +147,7 @@ void gazeTrackingAlgorithm::trackGaze(){
     //TODO: way to get the verGazeTolerance and horGazeTolerance from gazetool gui... 
     // if (abs(horGaze) < horGazeTolerance && abs(verGaze) < verGazeTolerance) {
     
-    if (std::abs(horGaze) < 5 && std::abs(verGaze) < 5) {
+    if (std::abs(horGaze) < horGazeTolerance && std::abs(verGaze) < verGazeTolerance) {
         // false detection of non mutual gaze, mutual gaze is lost for a brief moment
         std::cout << "Lost you for a moment there!" << std::endl;
     }
@@ -238,6 +249,8 @@ void gazeTrackingAlgorithm::trackGaze(){
             pub_arm_5.publish(goal_q(4,0));
             pub_arm_6.publish(goal_q(5,0));
             movingToPoint = true;
+            std::cout << horGaze * 180/M_PI << " " << verGaze * 180/M_PI << std::endl;
+            
         }
     }   
 }
@@ -269,8 +282,8 @@ void gazeTrackingAlgorithm::run(){
             }
             else if (movingToPoint) {
                 std::cout << "I'm on my way, from misery to happines today uh-huh uh-huh!" << std::endl;
+                std::cout << horGaze << " " << verGaze << std::endl;
                 
-                //movingToPoint = false;
             }
             else {
                 std::cout << "I am NOT looking at you!" << std::endl;

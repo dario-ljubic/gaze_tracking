@@ -13,6 +13,7 @@
 
 // user defined
 #include "gazetool/GazeHyps.h"
+#include "gazetool/GazeInfo.h"
 #include "schunk_lwa4p_trajectory/WaypointArray.h"
 #include <schunk_lwa4p_kinematics/lwa4p_kinematics.h>
 
@@ -38,6 +39,7 @@ public:
     
 private:
     void gazeCallback(const gazetool::GazeHyps& msg);
+    void additionalGazetoolInformationCallback(const gazetool::GazeInfo& msg);
     void jointStatesCallback(const sensor_msgs::JointState &msg);
     
     void initializeBuffer();
@@ -56,6 +58,7 @@ private:
     ros::Publisher pub_arm_5;
     ros::Publisher pub_arm_6;
     ros::Subscriber gazeSub;
+    ros::Subscriber gazeInfoSub;
     ros::Subscriber jointStatesSub;
     
     //buffer
@@ -73,6 +76,8 @@ private:
     double verGaze;
     double horGaze;
     bool mutGaze;
+    double horGazeTolerance; // information from gazetool GUI
+    double verGazeTolerance;
     
     // algorithm parameters
     double d = 500; // assumend distance from face to camera WARNING: distance is in mm, because all the kinematics is done in mm!
