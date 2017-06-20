@@ -40,13 +40,20 @@
   <!-- Use test_depend for packages you need only for testing: -->
   <!--   <test_depend>gtest</test_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
+   
   <build_depend>roscpp</build_depend>
   <build_depend>gazetool</build_depend>
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
+  <build_depend>schunk_lwa4p_kinematics</build_depend>
+  <build_depend>schunk_lwa4p_trajectory</build_depend>
+  <build_depend>eigen3</build_depend>
+  
   <run_depend>roscpp</run_depend>
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>
+  <run_depend>schunk_lwa4p_kinematics</run_depend>
+  <run_depend>eigen3</run_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

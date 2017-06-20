@@ -7,9 +7,6 @@ int main (int argc, char **argv) {
     ros::init(argc, argv, "gaze_tracking");
     
     gazeTrackingAlgorithm tracker;
-    tracker.initializePosition();
-    
-    tracker.initializeBuffer();
     
     tracker.run();
     

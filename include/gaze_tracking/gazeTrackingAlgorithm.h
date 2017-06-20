@@ -1,28 +1,52 @@
 #include <iostream>
 #include <queue>
+#include <string>
+#include <math.h>
+#include <eigen3/Eigen/Eigen>
+#include <chrono>
 
-// Ros
+// ROS
 #include "ros/ros.h"
 #include <std_msgs/Float64.h>
+#include <geometry_msgs/Vector3.h>
+#include <sensor_msgs/JointState.h>
 
-// user packages
+// user defined
 #include "gazetool/GazeHyps.h"
+#include "schunk_lwa4p_trajectory/WaypointArray.h"
+#include <schunk_lwa4p_kinematics/lwa4p_kinematics.h>
+
+class measureTime
+{
+public:
+    measureTime();
+    ~measureTime();
+    void start();
+    void stop(); 
+    
+private:
+    std::chrono::high_resolution_clock::time_point t1;
+    std::chrono::high_resolution_clock::time_point t2;
+};
 
 class gazeTrackingAlgorithm {
 
 public:
     gazeTrackingAlgorithm();
-    void callback(const gazetool::GazeHyps& msg);
     ~gazeTrackingAlgorithm();
-    void initializePosition();
-    void initializeBuffer();
-    void checkMutualGaze();
-    
-    void trackGaze();
-    //bool detectMutualGaze(bool mutGaze);
     void run();
     
 private:
+    void gazeCallback(const gazetool::GazeHyps& msg);
+    void jointStatesCallback(const sensor_msgs::JointState &msg);
+    
+    void initializeBuffer();
+    void initializeKinematics();
+    void initializePosition();
+    
+    void checkMutualGaze();
+    void trackGaze();
+    
     // Node handle, publishers and subscriber
     ros::NodeHandle n;
     ros::Publisher pub_arm_1;
@@ -31,19 +55,37 @@ private:
     ros::Publisher pub_arm_4;
     ros::Publisher pub_arm_5;
     ros::Publisher pub_arm_6;
-    ros::Subscriber sub;
+    ros::Subscriber gazeSub;
+    ros::Subscriber jointStatesSub;
     
     //buffer
     std::queue<int> buffer;
     int bufferSum;
     int bufferSize = 10; // change if strickter conditions want to be met
     float upperThreshold = 0.70*bufferSize;
-    float lowerThreshold = 0.40*bufferSize;
+    float lowerThreshold = 0.50*bufferSize;
+    
     bool isMutGaze = false;
+    bool firstMutGazeDetected = false;
+    bool movingToPoint = false;
     
     // gazetool data
-    float verGaze;
-    float horGaze;
+    double verGaze;
+    double horGaze;
     bool mutGaze;
     
+    // algorithm parameters
+    double d = 500; // assumend distance from face to camera //WARNING: distance is in mm, because all the kinematics is done in mm!
+    double x0 = 500;
+    double y0 = 0;
+    double z0 = 1000;
+    
+    // lwa4p_kinematics
+    lwa4p_kinematics kinematic;
+    int robot_id = 0; // to choose blue robot (important when loading kinematic parameters)
+    Eigen::MatrixXd lwa4p_temp_q;
+    
+    // time measuring
+    measureTime timer;
+
 };
