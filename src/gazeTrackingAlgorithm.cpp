@@ -24,7 +24,7 @@ gazeTrackingAlgorithm::~gazeTrackingAlgorithm(){
 void gazeTrackingAlgorithm::gazeCallback(const gazetool::GazeHyps& msg){
     
     // pull out filtered horizontal, vertical and mutual gaze 
-    verGaze = msg.verGaze;
+    verGaze = -msg.verGaze;
     horGaze = msg.horGaze;
     mutGaze = msg.mutGaze;
     
@@ -142,9 +142,104 @@ void gazeTrackingAlgorithm::trackGaze(){
     }
     else {
         std::cout << "Move robot in gaze direction!" << std::endl;
-        movingToPoint = true;
-    }
+        bool skip = false;
     
+        // gaze angles are in degrees, so a transformation to radians is needed
+        horGaze = horGaze * M_PI/180;
+        verGaze = verGaze * M_PI/180;
+        
+        // transformation from face to point on a sphere
+        Eigen::MatrixXd T_fs;
+        Eigen::MatrixXd R_yf = Eigen::MatrixXd::Zero(4,4);
+        Eigen::MatrixXd R_xf = Eigen::MatrixXd::Zero(4,4);
+        Eigen::MatrixXd T_d = Eigen::MatrixXd::Identity(4,4);
+        
+        R_yf(0,0) = cos(horGaze);
+        R_yf(2,0) = -sin(horGaze);
+        R_yf(1,1) = 1;
+        R_yf(0,2) = sin(horGaze);
+        R_yf(2,2) = cos(horGaze);
+        R_yf(3,3) = 1;
+        
+        R_xf(0,0) = 1;
+        R_xf(1,1) = cos(verGaze);
+        R_xf(2,1) = sin(verGaze);
+        R_xf(1,2) = -sin(verGaze);
+        R_xf(2,2) = cos(verGaze);
+        R_xf(3,3) = 1;
+        
+        T_d(2,3) = d;
+        
+        T_fs = R_yf * R_xf * T_d;
+        
+        // transformation from base to the center of the sphere
+        Eigen::MatrixXd T_bf = Eigen::MatrixXd::Zero(4,4);
+        
+        T_bf(1,0) = -1;
+        T_bf(2,1) = 1;
+        T_bf(0,2) = -1;
+        T_bf(0,3) = x0 + d;
+        T_bf(2,3) = z0;
+        T_bf(3,3) = 1;
+        
+        // transformation matrix from the coordinate system of the base to the coordinate system on the sphere
+        Eigen::MatrixXd T;
+        T = T_bf * T_fs;
+        
+        // create input vector for inverse kinematics
+        Eigen::MatrixXd goal_w = Eigen::MatrixXd::Zero(9,1);
+        
+        Eigen::MatrixXd T_orient = Eigen::MatrixXd::Zero(4,4);
+        
+        T_orient(1,0) = 1;
+        T_orient(0,1) = 1;
+        T_orient(2,2) = -1;
+        T_orient(3,3) = 1;
+        
+        // final coordinate system orientation, z pointing in the direction opposite of the sphere normal
+        T = T * T_orient;
+        
+        goal_w(0,0) = T(0,3);
+        goal_w(1,0) = T(1,3);
+        goal_w(2,0) = T(2,3);
+        goal_w(3,0) = T(0,0);
+        goal_w(4,0) = T(1,0);
+        goal_w(5,0) = T(2,0);
+        goal_w(6,0) = T(0,2);
+        goal_w(7,0) = T(1,2);
+        goal_w(8,0) = T(2,2);
+        
+        Eigen::MatrixXd goal_q;
+        
+        std::cout << "<----------Tool configuration vector (in mm)---------->" << std::endl;
+        std::cout << goal_w << std::endl;
+        
+        goal_q = kinematic.inverseKinematics(goal_w); // returns all possible solutions
+    //         std::cout << goal_q << std::endl;
+        
+        goal_q = kinematic.inverseKinematics_closestQ(goal_w, lwa4p_temp_q); // returns closest solution
+    //         std::cout << goal_q << std::endl;
+        
+        // check if nan appears in the solution, if it appears, ignore this result and repeat the procedure
+        for (int i = 0; i < 6; i = i + 1){
+            if (std::isnan(goal_q(i,0))) {
+                skip = true;
+                std::cout << "Inverse kinematics solution not feasible!" << std::endl;
+                std::cout << "Check wanted position..." << std::endl;
+                break;
+            }
+        }
+        
+        if (!skip) {
+            pub_arm_1.publish(goal_q(0,0));
+            pub_arm_2.publish(goal_q(1,0));
+            pub_arm_3.publish(goal_q(2,0));
+            pub_arm_4.publish(goal_q(3,0));
+            pub_arm_5.publish(goal_q(4,0));
+            pub_arm_6.publish(goal_q(5,0));
+            movingToPoint = true;
+        }
+    }   
 }
 
 void gazeTrackingAlgorithm::run(){
@@ -158,7 +253,7 @@ void gazeTrackingAlgorithm::run(){
     //timer.start();
     initializeBuffer();
     
-    ros::Rate r(10);
+    ros::Rate r(1);
     
     while(ros::ok()){
         
@@ -174,6 +269,8 @@ void gazeTrackingAlgorithm::run(){
             }
             else if (movingToPoint) {
                 std::cout << "I'm on my way, from misery to happines today uh-huh uh-huh!" << std::endl;
+                
+                //movingToPoint = false;
             }
             else {
                 std::cout << "I am NOT looking at you!" << std::endl;
@@ -189,6 +286,8 @@ void gazeTrackingAlgorithm::run(){
         r.sleep();
     }   
 }
+
+// -----------------------------------------------------------------------------------//
 
 measureTime::measureTime(){
 }
