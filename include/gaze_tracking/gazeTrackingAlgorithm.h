@@ -65,12 +65,11 @@ private:
     std::queue<int> buffer;
     int bufferSum;
     int bufferSize = 10; // change if strickter conditions want to be met
-    float upperThreshold = 0.70 * bufferSize;
+    float upperThreshold = 0.75 * bufferSize;
     float lowerThreshold = 0.50 * bufferSize;
     
     bool isMutGaze = false;
     bool firstMutGazeDetected = false;
-    bool movingToPoint = false;
     
     // gazetool data
     double verGaze;
@@ -82,7 +81,7 @@ private:
     // algorithm parameters
     double d = 500; // assumend distance from face to camera WARNING: distance is in mm, because all the kinematics is done in mm!
     double x0 = 500;
-    double y0 = 0;
+    double y0 = 0; // or 150
     double z0 = 1000;
     
     // lwa4p_kinematics

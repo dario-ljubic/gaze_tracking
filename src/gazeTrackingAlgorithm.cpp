@@ -28,8 +28,6 @@ void gazeTrackingAlgorithm::additionalGazetoolInformationCallback(const gazetool
     horGazeTolerance = msg.horizontalGazeTolerance;
     verGazeTolerance = msg.verticalGazeTolerance;
     
-    std::cout << horGazeTolerance << std::endl;
-    std::cout << verGazeTolerance << std::endl;
 }
 
 void gazeTrackingAlgorithm::gazeCallback(const gazetool::GazeHyps& msg){
@@ -109,9 +107,7 @@ void gazeTrackingAlgorithm::initializePosition(){
     } 
 }
 
-void gazeTrackingAlgorithm::initializeBuffer(){
-    // Mutual Gaze value is calculated based on bufferSize values
-    
+void gazeTrackingAlgorithm::initializeBuffer(){  
     // initialize buffer to hold past values of mutual gaze
     for (int i = 0; i < bufferSize; i = i + 1){
         buffer.push(0);
@@ -133,28 +129,28 @@ void gazeTrackingAlgorithm::initializeKinematics(){
 }
 
 void gazeTrackingAlgorithm::checkMutualGaze(){
-    
-    if (!isMutGaze && (bufferSum > upperThreshold)) {
+
+    if (!mutGaze && (bufferSum > upperThreshold)) {
         firstMutGazeDetected = true;
-        isMutGaze = true;
-        //timer.stop();
     }
-    else if (isMutGaze && (bufferSum < lowerThreshold)) isMutGaze = false;
+    isMutGaze = mutGaze;
+    
 }
 
 void gazeTrackingAlgorithm::trackGaze(){
-    
-    //TODO: way to get the verGazeTolerance and horGazeTolerance from gazetool gui... 
-    // if (abs(horGaze) < horGazeTolerance && abs(verGaze) < verGazeTolerance) {
     
     if (std::abs(horGaze) < horGazeTolerance && std::abs(verGaze) < verGazeTolerance) {
         // false detection of non mutual gaze, mutual gaze is lost for a brief moment
         std::cout << "Lost you for a moment there!" << std::endl;
     }
     else {
-        std::cout << "Move robot in gaze direction!" << std::endl;
+        std::cout << "Move robot in gaze direction: " horGaze << " " << verGaze << std::endl;
         bool skip = false;
-    
+        
+        // proportional controller
+        verGaze = 0.05 * verGaze;
+        horGaze = 0.05 * horGaze;
+            
         // gaze angles are in degrees, so a transformation to radians is needed
         horGaze = horGaze * M_PI/180;
         verGaze = verGaze * M_PI/180;
@@ -186,20 +182,11 @@ void gazeTrackingAlgorithm::trackGaze(){
         // transformation from base to the center of the sphere
         Eigen::MatrixXd T_bf = Eigen::MatrixXd::Zero(4,4);
         
-        T_bf(1,0) = -1;
-        T_bf(2,1) = 1;
-        T_bf(0,2) = -1;
-        T_bf(0,3) = x0 + d;
-        T_bf(2,3) = z0;
-        T_bf(3,3) = 1;
+        // direct kinematics transformation matrix
+        Eigen::MatrixXd T_06;
+        T_06 = kinematic.directKinematics(lwa4p_temp_q, 6);
         
-        // transformation matrix from the coordinate system of the base to the coordinate system on the sphere
-        Eigen::MatrixXd T;
-        T = T_bf * T_fs;
-        
-        // create input vector for inverse kinematics
-        Eigen::MatrixXd goal_w = Eigen::MatrixXd::Zero(9,1);
-        
+        // transformation to match the orientations
         Eigen::MatrixXd T_orient = Eigen::MatrixXd::Zero(4,4);
         
         T_orient(1,0) = 1;
@@ -207,8 +194,17 @@ void gazeTrackingAlgorithm::trackGaze(){
         T_orient(2,2) = -1;
         T_orient(3,3) = 1;
         
+        T_bf = T_06 * T_d * T_orient;
+        
+        // transformation matrix from the coordinate system of the base to the coordinate system on the sphere
+        Eigen::MatrixXd T;
+        T = T_bf * T_fs;
+        
         // final coordinate system orientation, z pointing in the direction opposite of the sphere normal
         T = T * T_orient;
+        
+        // create input vector for inverse kinematics
+        Eigen::MatrixXd goal_w = Eigen::MatrixXd::Zero(9,1);
         
         goal_w(0,0) = T(0,3);
         goal_w(1,0) = T(1,3);
@@ -222,8 +218,8 @@ void gazeTrackingAlgorithm::trackGaze(){
         
         Eigen::MatrixXd goal_q;
         
-        std::cout << "<----------Tool configuration vector (in mm)---------->" << std::endl;
-        std::cout << goal_w << std::endl;
+//         std::cout << "<----------Tool configuration vector (in mm)---------->" << std::endl;
+//         std::cout << goal_w << std::endl;
         
         goal_q = kinematic.inverseKinematics(goal_w); // returns all possible solutions
     //         std::cout << goal_q << std::endl;
@@ -248,25 +244,20 @@ void gazeTrackingAlgorithm::trackGaze(){
             pub_arm_4.publish(goal_q(3,0));
             pub_arm_5.publish(goal_q(4,0));
             pub_arm_6.publish(goal_q(5,0));
-            movingToPoint = true;
-            std::cout << horGaze * 180/M_PI << " " << verGaze * 180/M_PI << std::endl;
-            
-        }
+        }       
     }   
 }
 
 void gazeTrackingAlgorithm::run(){
     
-    //TODO: check if using initializePosition() slows down initial face detection
-    
     // load kinematics parameters
     initializeKinematics();
     
     initializePosition();
-    //timer.start();
+
     initializeBuffer();
     
-    ros::Rate r(1);
+    ros::Rate r(20);
     
     while(ros::ok()){
         
@@ -278,15 +269,9 @@ void gazeTrackingAlgorithm::run(){
             if (isMutGaze) {
                 //waitGazeChange    
                 std::cout << "Mutual gaze detected!" << std::endl;
-                movingToPoint = false;
-            }
-            else if (movingToPoint) {
-                std::cout << "I'm on my way, from misery to happines today uh-huh uh-huh!" << std::endl;
-                std::cout << horGaze << " " << verGaze << std::endl;
-                
+
             }
             else {
-                std::cout << "I am NOT looking at you!" << std::endl;
                 trackGaze();
             }
         }
