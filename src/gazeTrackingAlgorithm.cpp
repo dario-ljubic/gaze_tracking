@@ -93,13 +93,20 @@ void gazeTrackingAlgorithm::initializePosition(){
         }
     }
     
+    goal_q1.data = goal_q(0,0);
+    goal_q2.data = goal_q(1,0);
+    goal_q3.data = goal_q(2,0);
+    goal_q4.data = goal_q(3,0);
+    goal_q5.data = goal_q(4,0);
+    goal_q6.data = goal_q(5,0);
+    
     if (!skip) {
-        pub_arm_1.publish(goal_q(0,0));
-        pub_arm_2.publish(goal_q(1,0));
-        pub_arm_3.publish(goal_q(2,0));
-        pub_arm_4.publish(goal_q(3,0));
-        pub_arm_5.publish(goal_q(4,0));
-        pub_arm_6.publish(goal_q(5,0));
+        pub_arm_1.publish(goal_q1);
+        pub_arm_2.publish(goal_q2);
+        pub_arm_3.publish(goal_q3);
+        pub_arm_4.publish(goal_q4);
+        pub_arm_5.publish(goal_q5);
+        pub_arm_6.publish(goal_q6);
         std::cout << "In starting position!" << std::endl;
         ros::Duration(5).sleep();
         std::cout << "Ready!" << std::endl;
@@ -137,6 +144,81 @@ void gazeTrackingAlgorithm::checkMutualGaze(){
     
 }
 
+Eigen::MatrixXd gazeTrackingAlgorithm::calcJacobian(Eigen::MatrixXd lwa4p_temp_q)
+{
+    //std::cout << "temp q = " << lwa4p_blue_temp_q(0, 0) << ", " << lwa4p_blue_temp_q(1, 0) << ", " << lwa4p_blue_temp_q(2, 0) << ", " << lwa4p_blue_temp_q(3, 0) << ", " << lwa4p_blue_temp_q(4, 0) << ", " << lwa4p_blue_temp_q(5, 0) << endl;
+    
+    Eigen::MatrixXd jacob, temp_q;
+    jacob = Eigen::MatrixXd::Zero(6, 6);
+
+    double l1, l2, l3, l4;
+    l1 = 651;
+    l2 = 369.2;
+    l3 = 316;
+    l4 = 85;
+
+    temp_q = lwa4p_temp_q;
+    temp_q(2, 0) = -temp_q(2, 0) + 1.570796327;
+    temp_q(1, 0) = temp_q(1, 0) + 1.570796327;
+
+    jacob(0, 0) = l4*cos(temp_q(1, 0))*cos(temp_q(2, 0))*cos(temp_q(3, 0))*sin(temp_q(0, 0))*sin(temp_q(4, 0)) - l2*cos(temp_q(1, 0))*sin(temp_q(0, 0)) - l4*sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(4, 0))*sin(temp_q(0, 0)) - l4*cos(temp_q(0, 0))*sin(temp_q(3, 0))*sin(temp_q(4, 0)) - l3*sin(temp_q(1, 0) + temp_q(2, 0))*sin(temp_q(0, 0)) - l4*cos(temp_q(3, 0))*sin(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0))*sin(temp_q(4, 0));
+    jacob(0, 1) = cos(temp_q(0, 0))*(l3*cos(temp_q(1, 0) + temp_q(2, 0)) - l2*sin(temp_q(1, 0)) + l4*cos(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(4, 0)) + l4*sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(3, 0))*sin(temp_q(4, 0)));
+    jacob(0, 2) = l3*cos(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(0, 0)) + l4*cos(temp_q(0, 0))*(cos(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(4, 0)) + sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(3, 0))*sin(temp_q(4, 0)));
+    jacob(0, 3) = -l4*sin(temp_q(4, 0))*(cos(temp_q(3, 0))*sin(temp_q(0, 0)) - sin(temp_q(3, 0))*(cos(temp_q(0, 0))*cos(temp_q(1, 0))*cos(temp_q(2, 0)) - cos(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0))));
+    jacob(0, 4) = -l4*(cos(temp_q(4, 0))*(sin(temp_q(0, 0))*sin(temp_q(3, 0)) + cos(temp_q(3, 0))*(cos(temp_q(0, 0))*cos(temp_q(1, 0))*cos(temp_q(2, 0)) - cos(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0)))) + sin(temp_q(4, 0))*(cos(temp_q(0, 0))*cos(temp_q(1, 0))*sin(temp_q(2, 0)) + cos(temp_q(0, 0))*cos(temp_q(2, 0))*sin(temp_q(1, 0))));
+    jacob(0, 5) = 0;
+
+    jacob(1, 0) = l3*sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(0, 0)) + l2*cos(temp_q(0, 0))*cos(temp_q(1, 0)) + l4*sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(0, 0))*cos(temp_q(4, 0)) - l4*sin(temp_q(0, 0))*sin(temp_q(3, 0))*sin(temp_q(4, 0)) - l4*cos(temp_q(0, 0))*cos(temp_q(1, 0))*cos(temp_q(2, 0))*cos(temp_q(3, 0))*sin(temp_q(4, 0)) + l4*cos(temp_q(0, 0))*cos(temp_q(3, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0))*sin(temp_q(4, 0));
+    jacob(1, 1) = -l3*(sin(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0)) - cos(temp_q(1, 0))*cos(temp_q(2, 0))*sin(temp_q(0, 0))) - l4*(cos(temp_q(4, 0))*(sin(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0)) - cos(temp_q(1, 0))*cos(temp_q(2, 0))*sin(temp_q(0, 0))) - cos(temp_q(3, 0))*sin(temp_q(4, 0))*(cos(temp_q(1, 0))*sin(temp_q(0, 0))*sin(temp_q(2, 0)) + cos(temp_q(2, 0))*sin(temp_q(0, 0))*sin(temp_q(1, 0)))) - l2*sin(temp_q(0, 0))*sin(temp_q(1, 0));
+    jacob(1, 2) = -l3*(sin(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0)) - cos(temp_q(1, 0))*cos(temp_q(2, 0))*sin(temp_q(0, 0))) - l4*(cos(temp_q(4, 0))*(sin(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0)) - cos(temp_q(1, 0))*cos(temp_q(2, 0))*sin(temp_q(0, 0))) - cos(temp_q(3, 0))*sin(temp_q(4, 0))*(cos(temp_q(1, 0))*sin(temp_q(0, 0))*sin(temp_q(2, 0)) + cos(temp_q(2, 0))*sin(temp_q(0, 0))*sin(temp_q(1, 0))));
+    jacob(1, 3) = l4*sin(temp_q(4, 0))*(cos(temp_q(0, 0))*cos(temp_q(3, 0)) - sin(temp_q(3, 0))*(sin(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0)) - cos(temp_q(1, 0))*cos(temp_q(2, 0))*sin(temp_q(0, 0))));
+    jacob(1, 4) = l4*(cos(temp_q(4, 0))*(cos(temp_q(0, 0))*sin(temp_q(3, 0)) + cos(temp_q(3, 0))*(sin(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0)) - cos(temp_q(1, 0))*cos(temp_q(2, 0))*sin(temp_q(0, 0)))) - sin(temp_q(4, 0))*(cos(temp_q(1, 0))*sin(temp_q(0, 0))*sin(temp_q(2, 0)) + cos(temp_q(2, 0))*sin(temp_q(0, 0))*sin(temp_q(1, 0))));
+    jacob(1, 5) = 0;
+
+    jacob(2, 0) = 0;
+    jacob(2, 1) = l3*sin(temp_q(1, 0) + temp_q(2, 0)) + l2*cos(temp_q(1, 0)) - (l4*cos(temp_q(1, 0) + temp_q(2, 0))*sin(temp_q(3, 0) + temp_q(4, 0)))/2 + l4*sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(4, 0)) + (l4*sin(temp_q(3, 0) - temp_q(4, 0))*cos(temp_q(1, 0) + temp_q(2, 0)))/2;
+    jacob(2, 2) = l3*sin(temp_q(1, 0) + temp_q(2, 0)) + l4*sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(4, 0)) - l4*cos(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(3, 0))*sin(temp_q(4, 0));
+    jacob(2, 3) = l4*sin(temp_q(1, 0) + temp_q(2, 0))*sin(temp_q(3, 0))*sin(temp_q(4, 0));
+    jacob(2, 4) = l4*(cos(temp_q(1, 0) + temp_q(2, 0))*sin(temp_q(4, 0)) - sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(3, 0))*cos(temp_q(4, 0)));
+    jacob(2, 5) = 0;
+
+    jacob(3, 0) = -sin(temp_q(4, 0))*(cos(temp_q(0, 0))*sin(temp_q(3, 0)) + cos(temp_q(3, 0))*(sin(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0)) - cos(temp_q(1, 0))*cos(temp_q(2, 0))*sin(temp_q(0, 0)))) - cos(temp_q(4, 0))*(cos(temp_q(1, 0))*sin(temp_q(0, 0))*sin(temp_q(2, 0)) + cos(temp_q(2, 0))*sin(temp_q(0, 0))*sin(temp_q(1, 0)));
+    jacob(3, 1) = cos(temp_q(0, 0))*(cos(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(4, 0)) + sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(3, 0))*sin(temp_q(4, 0)));
+    jacob(3, 2) = cos(temp_q(0, 0))*(cos(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(4, 0)) + sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(3, 0))*sin(temp_q(4, 0)));
+    jacob(3, 3) = -sin(temp_q(4, 0))*(cos(temp_q(3, 0))*sin(temp_q(0, 0)) - sin(temp_q(3, 0))*(cos(temp_q(0, 0))*cos(temp_q(1, 0))*cos(temp_q(2, 0)) - cos(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0))));
+    jacob(3, 4) = -cos(temp_q(4, 0))*(sin(temp_q(0, 0))*sin(temp_q(3, 0)) + cos(temp_q(3, 0))*(cos(temp_q(0, 0))*cos(temp_q(1, 0))*cos(temp_q(2, 0)) - cos(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0)))) - sin(temp_q(4, 0))*(cos(temp_q(0, 0))*cos(temp_q(1, 0))*sin(temp_q(2, 0)) + cos(temp_q(0, 0))*cos(temp_q(2, 0))*sin(temp_q(1, 0)));
+    jacob(3, 5) = 0;
+
+    jacob(4, 0) = cos(temp_q(4, 0))*(cos(temp_q(0, 0))*cos(temp_q(1, 0))*sin(temp_q(2, 0)) + cos(temp_q(0, 0))*cos(temp_q(2, 0))*sin(temp_q(1, 0))) - sin(temp_q(4, 0))*(sin(temp_q(0, 0))*sin(temp_q(3, 0)) + cos(temp_q(3, 0))*(cos(temp_q(0, 0))*cos(temp_q(1, 0))*cos(temp_q(2, 0)) - cos(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0))));
+    jacob(4, 1) = sin(temp_q(0, 0))*(cos(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(4, 0)) + sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(3, 0))*sin(temp_q(4, 0)));
+    jacob(4, 2) = sin(temp_q(0, 0))*(cos(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(4, 0)) + sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(3, 0))*sin(temp_q(4, 0)));
+    jacob(4, 3) = sin(temp_q(4, 0))*(cos(temp_q(0, 0))*cos(temp_q(3, 0)) - sin(temp_q(3, 0))*(sin(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0)) - cos(temp_q(1, 0))*cos(temp_q(2, 0))*sin(temp_q(0, 0))));
+    jacob(4, 4) = cos(temp_q(4, 0))*(cos(temp_q(0, 0))*sin(temp_q(3, 0)) + cos(temp_q(3, 0))*(sin(temp_q(0, 0))*sin(temp_q(1, 0))*sin(temp_q(2, 0)) - cos(temp_q(1, 0))*cos(temp_q(2, 0))*sin(temp_q(0, 0)))) - sin(temp_q(4, 0))*(cos(temp_q(1, 0))*sin(temp_q(0, 0))*sin(temp_q(2, 0)) + cos(temp_q(2, 0))*sin(temp_q(0, 0))*sin(temp_q(1, 0)));
+    jacob(4, 5) = 0;
+
+    jacob(5, 0) = 0;
+    jacob(5, 1) = sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(4, 0)) - cos(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(3, 0))*sin(temp_q(4, 0));
+    jacob(5, 2) = sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(4, 0)) - cos(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(3, 0))*sin(temp_q(4, 0));
+    jacob(5, 3) = sin(temp_q(1, 0) + temp_q(2, 0))*sin(temp_q(3, 0))*sin(temp_q(4, 0));
+    jacob(5, 4) = cos(temp_q(1, 0) + temp_q(2, 0))*sin(temp_q(4, 0)) - sin(temp_q(1, 0) + temp_q(2, 0))*cos(temp_q(3, 0))*cos(temp_q(4, 0));
+    jacob(5, 5) = 0;
+
+    return jacob;
+}
+
+double gazeTrackingAlgorithm::wrapToPi(double angle){
+
+    return angle - floor(angle/(2*M_PI) + 0.5)*2*M_PI;
+}
+
+template<typename _Matrix_Type_>
+_Matrix_Type_ pseudoInverse(const _Matrix_Type_ &a, double epsilon = std::numeric_limits<double>::epsilon())
+{
+    Eigen::JacobiSVD< _Matrix_Type_ > svd(a ,Eigen::ComputeThinU | Eigen::ComputeThinV);
+    double tolerance = epsilon * std::max(a.cols(), a.rows()) *svd.singularValues().array().abs()(0);
+    return svd.matrixV() *  (svd.singularValues().array().abs() > tolerance).select(svd.singularValues().array().inverse(), 0).matrix().asDiagonal() * svd.matrixU().adjoint();
+}
+
 void gazeTrackingAlgorithm::trackGaze(){
     
     if (std::abs(horGaze) < horGazeTolerance && std::abs(verGaze) < verGazeTolerance) {
@@ -144,7 +226,7 @@ void gazeTrackingAlgorithm::trackGaze(){
         std::cout << "Lost you for a moment there!" << std::endl;
     }
     else {
-        std::cout << "Move robot in gaze direction: " horGaze << " " << verGaze << std::endl;
+        std::cout << "Move robot in gaze direction: " << horGaze << " " << verGaze << std::endl;
         bool skip = false;
         
         // proportional controller
@@ -218,14 +300,57 @@ void gazeTrackingAlgorithm::trackGaze(){
         
         Eigen::MatrixXd goal_q;
         
+        if (inverse) {
+        
 //         std::cout << "<----------Tool configuration vector (in mm)---------->" << std::endl;
 //         std::cout << goal_w << std::endl;
         
-        goal_q = kinematic.inverseKinematics(goal_w); // returns all possible solutions
-    //         std::cout << goal_q << std::endl;
-        
-        goal_q = kinematic.inverseKinematics_closestQ(goal_w, lwa4p_temp_q); // returns closest solution
-    //         std::cout << goal_q << std::endl;
+            goal_q = kinematic.inverseKinematics(goal_w); // returns all possible solutions
+//                 std::cout << goal_q << std::endl;
+            
+            goal_q = kinematic.inverseKinematics_closestQ(goal_w, lwa4p_temp_q); // returns closest solution
+//                 std::cout << goal_q << std::endl;               
+        }
+        if (jacobian) {
+            
+            Eigen::MatrixXd jacob, jacob_inv, dq;
+            Eigen::MatrixXd delta_w = Eigen::MatrixXd::Zero(6,1);
+            Eigen::MatrixXd temp_goal_q = Eigen::MatrixXd::Zero(6,1);
+            
+            delta_w(0,0) = T(0,3);
+            delta_w(1,0) = T(1,3);
+            delta_w(2,0) = T(2,3);
+            delta_w(3,0) = T(0,2);
+            delta_w(4,0) = T(1,2);
+            delta_w(5,0) = T(2,2);
+            
+            jacob = calcJacobian(lwa4p_temp_q);
+            jacob_inv = pseudoInverse(jacob);   
+            
+            dq = jacob_inv * delta_w;
+            std::cout << dq << std::endl;
+            
+            temp_goal_q(0, 0) = wrapToPi(lwa4p_temp_q(0, 0) + dq(0, 0));
+            temp_goal_q(1, 0) = wrapToPi(lwa4p_temp_q(1, 0) + dq(1, 0));
+            temp_goal_q(2, 0) = wrapToPi(lwa4p_temp_q(2, 0) - dq(2, 0));
+            temp_goal_q(3, 0) = wrapToPi(lwa4p_temp_q(3, 0) + dq(3, 0));
+            temp_goal_q(4, 0) = wrapToPi(lwa4p_temp_q(4, 0) + dq(4, 0));
+            temp_goal_q(5, 0) = wrapToPi(lwa4p_temp_q(5, 0) + dq(5, 0));
+            
+            std::cout << "------------temp_goal_q--------------------" << std::endl;
+            std::cout << temp_goal_q << std::endl;
+            
+//             temp_goal_q(0, 0) = lwa4p_temp_q(0, 0) + dq(0, 0);
+//             temp_goal_q(1, 0) = lwa4p_temp_q(1, 0) + dq(1, 0);
+//             temp_goal_q(2, 0) = lwa4p_temp_q(2, 0) - dq(2, 0);
+//             temp_goal_q(3, 0) = lwa4p_temp_q(3, 0) + dq(3, 0);
+//             temp_goal_q(4, 0) = lwa4p_temp_q(4, 0) + dq(4, 0);
+//             temp_goal_q(5, 0) = lwa4p_temp_q(5, 0) + dq(5, 0);
+            
+            std::cout << "nakon goala " << std::endl;
+            goal_q = temp_goal_q;
+            std::cout << goal_q << std::endl;
+        }
         
         // check if nan appears in the solution, if it appears, ignore this result and repeat the procedure
         for (int i = 0; i < 6; i = i + 1){
@@ -236,14 +361,21 @@ void gazeTrackingAlgorithm::trackGaze(){
                 break;
             }
         }
+      
+        goal_q1.data = goal_q(0,0);
+        goal_q2.data = goal_q(1,0);
+        goal_q3.data = goal_q(2,0);
+        goal_q4.data = goal_q(3,0);
+        goal_q5.data = goal_q(4,0);
+        goal_q6.data = goal_q(5,0);
         
         if (!skip) {
-            pub_arm_1.publish(goal_q(0,0));
-            pub_arm_2.publish(goal_q(1,0));
-            pub_arm_3.publish(goal_q(2,0));
-            pub_arm_4.publish(goal_q(3,0));
-            pub_arm_5.publish(goal_q(4,0));
-            pub_arm_6.publish(goal_q(5,0));
+            pub_arm_1.publish(goal_q1);
+            pub_arm_2.publish(goal_q2);
+            pub_arm_3.publish(goal_q3);
+            pub_arm_4.publish(goal_q4);
+            pub_arm_5.publish(goal_q5);
+            pub_arm_6.publish(goal_q6);
         }       
     }   
 }

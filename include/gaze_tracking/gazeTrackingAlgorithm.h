@@ -49,6 +49,9 @@ private:
     void checkMutualGaze();
     void trackGaze();
     
+    double wrapToPi(double angle);
+    Eigen::MatrixXd calcJacobian(Eigen::MatrixXd lwa4p_temp_q);
+    
     // Node handle, publishers and subscriber
     ros::NodeHandle n;
     ros::Publisher pub_arm_1;
@@ -81,13 +84,17 @@ private:
     // algorithm parameters
     double d = 500; // assumend distance from face to camera WARNING: distance is in mm, because all the kinematics is done in mm!
     double x0 = 500;
-    double y0 = 0; // or 150
+    double y0 = 150; // or 150
     double z0 = 1000;
     
     // lwa4p_kinematics
     lwa4p_kinematics kinematic;
     int robot_id = 0; // to choose blue robot (important when loading kinematic parameters)
     Eigen::MatrixXd lwa4p_temp_q;
+    std_msgs::Float64 goal_q1, goal_q2, goal_q3, goal_q4, goal_q5, goal_q6;
+    
+    bool inverse = true;
+    bool jacobian = false;
     
     // time measuring
     measureTime timer;
